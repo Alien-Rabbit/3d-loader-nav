@@ -1,9 +1,14 @@
 
-console.log('Snowman three js loading script main.js loaded');
+console.log('three js loading script main.js loaded');
 
 
 let cachedModules = null;
 let glbCache = {};
+
+
+const scrubber = document.getElementById("scrubber");
+scrubber.oninput = () => applyCameraAt(scrubber.value / scrubber.max);
+
 
 window.loadThree = (function () {
     cachedModules = null; // Cache the loaded modules
@@ -174,6 +179,7 @@ window.loadThreeJSWithModel = async function (modelPath, backgroundTex, light, s
 };
 
 window.modelWithPath = function (modelPath, backgroundTex, scale, Tarx, Tary, Tarz, duration) {
+ 
     let model = modelPath;
     // Remove any existing WebGL content to prevent duplication
     let existingCanvas = document.querySelector("#three-container canvas");
@@ -193,6 +199,7 @@ window.modelWithPath = function (modelPath, backgroundTex, scale, Tarx, Tary, Ta
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
+    attachSceneRefs(scene, camera, renderer);
     const loaderMove = new GLTFLoader();
 
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -263,192 +270,211 @@ window.modelWithPath = function (modelPath, backgroundTex, scale, Tarx, Tary, Ta
             }, 1000); // Reset after 1 second at target position
         }
         renderer.render(scene, camera); // Render the scene
+
+        
     }
     // Start the camera animation loop
     requestAnimationFrame(animateCamera);
 }
 
 
-// LOAD WITH 2 SPRITES  Right - Left - Still WIP
-window.loadThreeJSWith2Actors = function (modelPath, backgroundTex, light, scale, posx, posy, posz, charL, charR) {
-    // load sprites
-    let model = modelPath;
-    let spriteRight = null; let spriteLeft = null;
+function playCameraTimeline(keys) {
+    let index = 0;
 
-    // Remove any existing WebGL content to prevent duplication
-    let existingCanvas = document.querySelector("#three-container canvas");
-    if (existingCanvas) {
-        existingCanvas.remove();
-    }
+    function moveNext() {
+        if (index >= keys.length - 1) return;
 
-    // Ensure cached modules exist
-    if (!window.loadThree || !cachedModules) {
-        console.error("Three.js modules not loaded.");
-        return;
-    }
-
-    const THREE = cachedModules.THREE;
-    const GLTFLoader = cachedModules.GLTFLoader;
-
-    // Initialize Three.js scene
-    const scene = new THREE.Scene();
-
-    const texLoader = new THREE.TextureLoader();
-    // Load background image
-    if (backgroundTex) {
-        texLoader.load(backgroundTex, function (texture) {
-            scene.background = texture;  // Set as background
-        });
-    }
-
-    // Lighting
-    const ambientLight = new THREE.AmbientLight(light, 1);
-    scene.add(ambientLight);
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-    directionalLight.position.set(5, 5, 5);
-    scene.add(directionalLight);
-    scene.background = new THREE.Color('black');
-
-    // Camera and renderer setup
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 2, 5);
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.getElementById("three-container").appendChild(renderer.domElement);
-    // Add sprites in order - Right, Center, Left
-    if (charR !== null) {
-        spriteRight = createSprite(charR);
-        positionSpriteRight(spriteRight, camera, renderer);
-        scene.add(spriteRight);
-    }
-    if (charL !== null) {
-        spriteLeft = createSprite(charL);
-        positionSpriteLeft(spriteLeft, camera, renderer);
-        scene.add(spriteLeft);
-    }
-
-    camera.position.z = 8; // Move the camera back
-    // Load the GLB model
-    const clock = new THREE.Clock();
-    let mixer = null; // Mixer for animations
-    let animNum = null; // if custom anim 
-
-    const loader = new GLTFLoader();
-    loader.load(
-        model,
-        (gltf) => {
-            scene.add(gltf.scene);
-            // / custom pos ?
-            if (posx, posy, posz) {
-                gltf.scene.position.set(posx, posy, posz);
-            } else {
-                gltf.scene.position.set(0, 0, 0);
-            }
-
-            // custom scaling ?
-            if (scale) {
-                gltf.scene.scale.set(scale, scale, scale);
-            }
-            else {
-                gltf.scene.scale.set(1, 1, 1);
-            }
-
-            console.log("Model loaded:", model, gltf.animations);
-            // Ensure animations exist
-            if (gltf.animations.length > 0) {
-                mixer = new THREE.AnimationMixer(gltf.scene);
-                if (custumAnim >= 0 && custumAnim != null) {
-                    console.log(gltf.animations[custumAnim].name);
-                    animNum = gltf.animations[custumAnim];
-                    const actionCustom = mixer.clipAction(animNum);
-                    actionCustom.play()
-                } else
-                    gltf.animations.forEach((clip) => {
-                        console.log("Playing animation:", clip.name);
-                        const action = mixer.clipAction(clip);
-                        action.play();
-                    });
-            } else {
-                console.warn("No animations found in model:", model);
-            }
-        },
-        undefined,
-        (error) => {
-            console.error("Error loading model:", error);
-        }
-    );
-
-    // Handle resizing
-    window.addEventListener("resize", () => {
-        positionSpriteRight(spriteRight, camera, renderer);
-        positionSpriteLeft(spriteLeft, camera, renderer);
-    });
-
-    // Animation loop
-    function animate() {
-        requestAnimationFrame(animate);
-        if (mixer) mixer.update(clock.getDelta()); // Update mixer if it exists
-        renderer.render(scene, camera);
-    }
-
-    function positionSpriteRight(sprite, camera, renderer) {
-        const width = renderer.domElement.clientWidth;
-        const height = renderer.domElement.clientHeight;
-
-        // Convert screen space (right edge) to world coordinates
-        const rightEdge = screenToWorld(16, 0, camera, width, height);
-        sprite.scale.set(6, 9);
-        sprite.position.set(rightEdge.x, rightEdge.y, 0);
-    }
-
-    function positionSpriteLeft(sprite, camera, renderer) {
-        const width = renderer.domElement.clientWidth;
-        const height = renderer.domElement.clientHeight;
-
-        // Convert screen space (left edge) to world coordinates
-        const leftEdge = screenToWorld(-16, 0, camera, width, height);
-        sprite.scale.set(6, 9);
-        sprite.position.set(leftEdge.x, leftEdge.y, 0);
-    }
-
-    // Convert normalized screen coordinates to world space
-    function screenToWorld(x, y, camera, width, height) {
-        const ndc = new THREE.Vector3(x * 2 - 1, -(y * 2 - 1), 0);
-        ndc.unproject(camera);
-        ndc.z = 0; // Ensure sprite stays in 2D plane
-        return ndc;
-    }
-
-    // Create a sprite
-    function createSprite(textureURL, flipX = false) {
-        const loaderS = new THREE.TextureLoader();
-
-        const texture = loaderS.load(
-            textureURL,
-            () => console.log(` Texture loaded: ${textureURL}`),
-            undefined,
-            (err) => console.error(` Error loading texture: ${textureURL}`, err)
+        const from = new THREE.Vector3(
+            keys[index].x,
+            keys[index].y,
+            keys[index].z
         );
 
-        if (!texture) {
-            console.error(" Texture failed to load!");
-            return null;
+        const to = new THREE.Vector3(
+            keys[index + 1].x,
+            keys[index + 1].y,
+            keys[index + 1].z
+        );
+
+        const duration = keys[index + 1].t;
+        let start = null;
+
+        function animate(time) {
+            if (!start) start = time;
+            const t = Math.min((time - start) / duration, 1);
+
+            camera.position.lerpVectors(from, to, t);
+            renderer.render(sceneRef, camera);
+
+            if (t < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                index++;
+                moveNext();
+            }
         }
-        const material = new THREE.SpriteMaterial({
-            map: texture,
-            depthTest: false,  // Disable depth testing to make sure the sprite is always in front
-            depthWrite: false  // Disable writing to depth buffer so it's not overwritten by 3D objects
-        });
 
-        const sprite = new THREE.Sprite(material);
-
-        // Flip horizontally if required
-        if (flipX) {
-            sprite.scale.x *= -1;
-        }
-
-        return sprite;
+        requestAnimationFrame(animate);
     }
-    animate();
+
+    moveNext();
 }
+
+let cameraPath = [
+    {
+        time: 0,
+        position: { x: 0, y: 2, z: 5 },
+        lookAt: { x: 0, y: 0, z: 0 }
+    }
+];
+
+// let sceneRef, cameraRef, rendererRef;
+
+document.getElementById("addKey").onclick = () => {
+    const key = {
+        x: parseFloat(camX.value),
+        y: parseFloat(camY.value),
+        z: parseFloat(camZ.value),
+        t: parseInt(camT.value)
+    };
+    cameraPath.push(key);
+    renderTimeline();
+};
+
+
+
+function renderTimeline() {
+    const tl = document.getElementById("timeline");
+    tl.innerHTML = "";
+
+    cameraPath.forEach((k, i) => {
+        const div = document.createElement("div");
+        div.className = "keyframe";
+        div.textContent = `Key ${i + 1} — ${k.time}ms`;
+        tl.appendChild(div);
+    });
+
+    updateScrubberRange();
+}
+
+function totalDuration() {
+    return Math.max(...cameraPath.map(k => k.time));
+}
+
+function buildSpline() {
+    return new THREE.CatmullRomCurve3(
+        cameraPath.map(k =>
+            new THREE.Vector3(k.position.x, k.position.y, k.position.z)
+        )
+    );
+}
+
+scrubber.oninput = () => {
+    const t = scrubber.value / scrubber.max;
+    applyCameraAt(t);
+};
+
+scrubber.addEventListener("input", () => {
+    if (!camera || !rendererRef) return;
+
+    const t = scrubber.value / scrubber.max;
+    applyCameraAt(t);
+});
+
+function applyCameraAt(t) {
+    const spline = buildSpline();
+    const pos = spline.getPoint(t);
+
+    camera.position.copy(pos);
+
+    const idx = Math.floor(t * (cameraPath.length - 1));
+    const a = cameraPath[idx];
+    const b = cameraPath[Math.min(idx + 1, cameraPath.length - 1)];
+
+    const look = new THREE.Vector3(
+        THREE.MathUtils.lerp(a.lookAt.x, b.lookAt.x, t),
+        THREE.MathUtils.lerp(a.lookAt.y, b.lookAt.y, t),
+        THREE.MathUtils.lerp(a.lookAt.z, b.lookAt.z, t)
+    );
+
+    camera.lookAt(look);
+    rendererRef.render(sceneRef, camera);
+}
+
+function playCameraSpline(duration = 5000) {
+    const spline = buildSpline();
+    let start = null;
+
+    function animate(time) {
+        if (!start) start = time;
+        const t = Math.min((time - start) / duration, 1);
+
+        const pos = spline.getPoint(t);
+        camera.position.copy(pos);
+
+        applyCameraAt(t);
+
+        if (t < 1) {
+            requestAnimationFrame(animate);
+        }
+    }
+    requestAnimationFrame(animate);
+}
+
+function updateLookAt(index) {
+    cameraPath[index].lookAt = {
+        x: parseFloat(lx.value),
+        y: parseFloat(ly.value),
+        z: parseFloat(lz.value)
+    };
+}
+
+function updateScrubberRange() {
+    scrubber.max = totalDuration() || 1000;
+    scrubber.value = 0;
+}
+
+let recorder, recordedChunks = [];
+
+function startRecording() {
+    const stream = renderer.domElement.captureStream(60);
+    recorder = new MediaRecorder(stream, {
+        mimeType: "video/webm"
+    });
+
+    recorder.ondataavailable = e => recordedChunks.push(e.data);
+    recorder.onstop = exportVideo;
+    recorder.start();
+}
+
+function stopRecording() {
+    recorder.stop();
+}
+
+function exportVideo() {
+    const blob = new Blob(recordedChunks, { type: "video/webm" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "camera-animation.webm";
+    a.click();
+
+    recordedChunks = [];
+}
+
+document.getElementById("glbUpload").onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const url = URL.createObjectURL(file);
+    await loadThree();
+    loadThreeJSWithModel(url, null, 0xffffff, 1, 0, 0, 0, 0);
+};
+
+document.getElementById("playPath").onclick = () => {
+    if (cameraPath.length < 2) return;
+    playCameraTimeline(cameraPath);
+};
+
 
