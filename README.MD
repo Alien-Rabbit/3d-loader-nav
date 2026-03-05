@@ -4,7 +4,7 @@
 ![alt text](https://github.com/Alien-Rabbit/3d-loader-nav/blob/main/appPhoto.jpg?raw=true)
 
 
-Live Demo Link - <a href = "https://drnoir.github.io/3d-loader-twine/Example%20Game%20-%20The%20Pointless%20Garage%20Quest/">Play the demo game here</a>
+Live Link - <a href = "https://threed-loader-nav.onrender.com/">Beady Eye</a>
 
 This is a simple web based 3D model loader and previwer which allows you to load in 3D models and add some keyframes for basic aniamtion and record them and output as mp4 files. This can be useful for previewing models or creating simple 
 animations to preview a model to show otheres 
