@@ -27,16 +27,18 @@ window.loadThree = (function () {
         }
 
         try {
-            console.log("Loading Three.js and GLTFLoader...");
+            console.log("Loading Three.js and loaders...");
 
-            // Correct import for Three.js and GLTFLoader using explicit paths
+            // Correct import for Three.js and loaders using explicit paths
             const THREE = await import('https://unpkg.com/three@latest/build/three.module.js?module');
             const { GLTFLoader } = await import('https://unpkg.com/three@latest/examples/jsm/loaders/GLTFLoader.js?module');
+            const { OBJLoader } = await import('https://unpkg.com/three@latest/examples/jsm/loaders/OBJLoader.js?module');
+            const { FBXLoader } = await import('https://unpkg.com/three@latest/examples/jsm/loaders/FBXLoader.js?module');
 
-            console.log("Three.js and GLTFLoader loaded successfully!");
+            console.log("Three.js and loaders loaded successfully!");
 
             // Store in cache to prevent multiple imports
-            cachedModules = { THREE, GLTFLoader };
+            cachedModules = { THREE, GLTFLoader, OBJLoader, FBXLoader };
             console.log(cachedModules);
             return cachedModules;
         } catch (error) {
@@ -86,7 +88,7 @@ window.preloadGLB = async function (rootPath) {
     }
 };
 
-window.loadThreeJSWithModel = async function (modelPath, backgroundTex, light, scale, posx, posy, posz, speed, custumAnim) {
+window.loadThreeJSWithModel = async function (modelPath, backgroundTex, light, scale, posx, posy, posz, speed, custumAnim, format) {
     let model = modelPath;
 
     // Remove any existing WebGL content to prevent duplication
@@ -103,6 +105,8 @@ window.loadThreeJSWithModel = async function (modelPath, backgroundTex, light, s
 
     const THREE = cachedModules.THREE;
     const GLTFLoader = cachedModules.GLTFLoader;
+    const OBJLoader = cachedModules.OBJLoader;
+    const FBXLoader = cachedModules.FBXLoader;
 
     // Initialize Three.js scene
     const scene = new THREE.Scene();
@@ -131,46 +135,70 @@ window.loadThreeJSWithModel = async function (modelPath, backgroundTex, light, s
     document.getElementById("three-container").appendChild(renderer.domElement);
     attachSceneRefs(scene, camera, renderer);
 
-    // Load the GLB model
+    // Load the model based on format
     const clock = new THREE.Clock();
     let mixer = null; // Mixer for animations
     let animNum = null; // if custom anim 
 
-    const loader = new GLTFLoader();
+    const extension = format || model.split('.').pop().toLowerCase();
+    let loader;
+    if (extension === 'glb' || extension === 'gltf') {
+        loader = new GLTFLoader();
+    } else if (extension === 'obj') {
+        loader = new OBJLoader();
+    } else if (extension === 'fbx') {
+        loader = new FBXLoader();
+    } else {
+        console.error("Unsupported model format:", extension);
+        return;
+    }
+
     loader.load(
         model,
-        (gltf) => {
-            scene.add(gltf.scene);
+        (result) => {
+            let object;
+            let animations = [];
+            if (extension === 'glb' || extension === 'gltf') {
+                object = result.scene;
+                animations = result.animations;
+            } else if (extension === 'obj') {
+                object = result;
+            } else if (extension === 'fbx') {
+                object = result;
+                animations = result.animations || [];
+            }
+
+            scene.add(object);
 
             // custom pos ?
-            if (posx, posy, posz) {
-                gltf.scene.position.set(posx, posy, posz);
+            if (posx !== undefined && posy !== undefined && posz !== undefined) {
+                object.position.set(posx, posy, posz);
             } else {
-                gltf.scene.position.set(0, 0, 0);
+                object.position.set(0, 0, 0);
             }
 
             // custom scaling ?
             if (scale) {
-                gltf.scene.scale.set(scale, scale, scale);
+                object.scale.set(scale, scale, scale);
+            } else {
+                object.scale.set(1, 1, 1);
             }
-            else {
-                gltf.scene.scale.set(1, 1, 1);
-            }
-            console.log("Model loaded:", model, gltf.animations);
+            console.log("Model loaded:", model, animations);
             // Ensure animations exist
-            if (gltf.animations.length > 0) {
-                mixer = new THREE.AnimationMixer(gltf.scene);
+            if (animations.length > 0) {
+                mixer = new THREE.AnimationMixer(object);
                 if (custumAnim >= 0 && custumAnim != null) {
-                    console.log(gltf.animations[custumAnim].name);
-                    animNum = gltf.animations[custumAnim];
+                    console.log(animations[custumAnim].name);
+                    animNum = animations[custumAnim];
                     const actionCustom = mixer.clipAction(animNum);
-                    actionCustom.play()
-                } else
-                    gltf.animations.forEach((clip) => {
+                    actionCustom.play();
+                } else {
+                    animations.forEach((clip) => {
                         console.log("Playing animation:", clip.name);
                         const action = mixer.clipAction(clip);
                         action.play();
                     });
+                }
             } else {
                 console.warn("No animations found in model:", model);
             }
@@ -178,6 +206,7 @@ window.loadThreeJSWithModel = async function (modelPath, backgroundTex, light, s
         undefined,
         (error) => {
             console.error("Error loading model:", error);
+            logToConsole("Error loading model: " + (error.message || error.toString()));
         }
     );
 
@@ -191,7 +220,7 @@ window.loadThreeJSWithModel = async function (modelPath, backgroundTex, light, s
     animate();
 };
 
-window.modelWithPath = function (modelPath, backgroundTex, scale, Tarx, Tary, Tarz, duration) {
+window.modelWithPath = function (modelPath, backgroundTex, scale, Tarx, Tary, Tarz, duration, format) {
  
     let model = modelPath;
     // Remove any existing WebGL content to prevent duplication
@@ -208,12 +237,13 @@ window.modelWithPath = function (modelPath, backgroundTex, scale, Tarx, Tary, Ta
 
     const THREE = cachedModules.THREE;
     const GLTFLoader = cachedModules.GLTFLoader;
+    const OBJLoader = cachedModules.OBJLoader;
+    const FBXLoader = cachedModules.FBXLoader;
     // Initialize Three.js scene
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     attachSceneRefs(scene, camera, renderer);
-    const loaderMove = new GLTFLoader();
 
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.getElementById("three-container").appendChild(renderer.domElement);
@@ -237,22 +267,41 @@ window.modelWithPath = function (modelPath, backgroundTex, scale, Tarx, Tary, Ta
         });
     }
 
+    const extension = format || model.split('.').pop().toLowerCase();
+    let loaderMove;
+    if (extension === 'glb' || extension === 'gltf') {
+        loaderMove = new GLTFLoader();
+    } else if (extension === 'obj') {
+        loaderMove = new OBJLoader();
+    } else if (extension === 'fbx') {
+        loaderMove = new FBXLoader();
+    } else {
+        console.error("Unsupported model format:", extension);
+        return;
+    }
+
     loaderMove.load(
         model,
-        (gltf) => {
-            scene.add(gltf.scene);
-            gltf.scene.position.set(0, -3, 0);
+        (result) => {
+            let object;
+            if (extension === 'glb' || extension === 'gltf') {
+                object = result.scene;
+            } else {
+                object = result;
+            }
+            scene.add(object);
+            object.position.set(0, -3, 0);
             if (scale) {
-                gltf.scene.scale.set(scale, scale, scale);
+                object.scale.set(scale, scale, scale);
+            } else {
+                object.scale.set(1, 1, 1);
             }
-            else {
-                gltf.scene.scale.set(1, 1, 1);
-            }
-            console.log("Model loaded:", model, gltf.animations);
+            console.log("Model loaded:", model);
         },
         undefined,
         (error) => {
             console.error("Error loading model:", error);
+            logToConsole("Error loading model: " + (error.message || error.toString()));
         }
     );
 
@@ -476,10 +525,14 @@ function startRecording() {
     recorder.ondataavailable = e => recordedChunks.push(e.data);
     recorder.onstop = exportVideo;
     recorder.start();
+    document.getElementById("recordingIndicator").style.display = "block";
+    logToConsole("Recording started");
 }
 
 function stopRecording() {
     recorder.stop();
+    document.getElementById("recordingIndicator").style.display = "none";
+    logToConsole("Recording stopped");
 }
 
 function exportVideo() {
@@ -492,6 +545,8 @@ function exportVideo() {
     a.click();
 
     recordedChunks = [];
+    document.getElementById("recordingIndicator").style.display = "none";
+    logToConsole("Video exported as camera-animation.mp4");
 }
 
 
@@ -500,13 +555,26 @@ document.getElementById("glbUpload").onchange = async (e) => {
     if (!file) return;
 
     const url = URL.createObjectURL(file);
+    const format = file.name.split('.').pop().toLowerCase();
     await loadThree();
-    loadThreeJSWithModel(url, null, 0xffffff, 1, 0, 0, 0, 0);
+    loadThreeJSWithModel(url, null, 0xffffff, 1, 0, 0, 0, 0, null, format);
 };
 
 document.getElementById("playPath").onclick = () => {
     if (cameraPath.length < 2) return;
     playCameraTimeline(cameraPath);
 };
+
+// Console functionality
+function logToConsole(message) {
+    const consoleDiv = document.getElementById("console");
+    const timestamp = new Date().toLocaleTimeString();
+    consoleDiv.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+    consoleDiv.scrollTop = consoleDiv.scrollHeight;
+}
+
+document.getElementById("clearConsole").onclick = function() {
+    document.getElementById("console").innerHTML = "";
+}
 
 

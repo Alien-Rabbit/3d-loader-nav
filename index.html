@@ -42,6 +42,48 @@
       cursor: pointer;
     }
 
+    #recordingIndicator {
+      display: none;
+      color: red;
+      font-weight: bold;
+      animation: flash 0.5s infinite alternate;
+    }
+
+    @keyframes flash {
+      from { opacity: 1; }
+      to { opacity: 0.3; }
+    }
+
+    #consoleContainer {
+      margin-top: 10px;
+      border-top: 1px solid #333;
+      padding-top: 10px;
+    }
+
+    #console {
+      background: #111;
+      color: #0f0;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 150px;
+      overflow-y: auto;
+      padding: 5px;
+      border: 1px solid #333;
+    }
+
+    #clearConsole {
+      background: #333;
+      color: #fff;
+      border: 1px solid #555;
+      padding: 4px 8px;
+      cursor: pointer;
+      margin-bottom: 5px;
+    }
+
+    #clearConsole:hover {
+      background: #555;
+    }
+
     #timeline {
       display: flex;
       gap: 6px;
@@ -77,12 +119,16 @@
   <div id="three-container"></div>
 
   <div id="ui">
+    <h2>Beady Eye 3D Model Viewer and Recorder</h2>
     <div class="row">
-      <input type="file" id="glbUpload" accept=".glb">
+
+      <input type="file" id="glbUpload" accept=".glb,.obj,.fbx">
       <button id="playPath">▶ Play Camera Path</button>
       <button onclick="startRecording()">⏺ Record</button>
       <button onclick="stopRecording()">⏹ Stop</button>
     </div>
+
+    <div id="recordingIndicator">🔴 RECORDING</div>
 
 
 
@@ -114,8 +160,12 @@
     <div id="timeline"></div>
 </div>
 
-  <script src="main.js"></script>
+    <div id="consoleContainer">
+      <button id="clearConsole">Clear Console</button>
+      <div id="console"></div>
+    </div>
 
+  <script src="main.js"></script>
 
 </body>
 
