@@ -1,6 +1,8 @@
 
-## Beady Eye 3D - Basic 3D loadering and Animation tool
+## Beady Eye 3D - Basic 3D loading and Animation tool
 ####  by Chris Godber (Forked from )
+![alt text](https://github.com/Alien-Rabbit/3d-loader-nav/blob/main/appPhoto.jpg?raw=true)
+
 
 Live Demo Link - <a href = "https://drnoir.github.io/3d-loader-twine/Example%20Game%20-%20The%20Pointless%20Garage%20Quest/">Play the demo game here</a>
 
