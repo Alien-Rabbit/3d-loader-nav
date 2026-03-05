@@ -122,7 +122,8 @@
     <h2>Beady Eye 3D Model Viewer and Recorder</h2>
     <div class="row">
 
-      <input type="file" id="glbUpload" accept=".glb,.obj,.fbx">
+      <label>Model: <input type="file" id="glbUpload" accept=".glb,.obj,.fbx"></label>
+      <label>Background: <input type="file" id="bgUpload" accept="image/*"></label>
       <button id="playPath">▶ Play Camera Path</button>
       <button onclick="startRecording()">⏺ Record</button>
       <button onclick="stopRecording()">⏹ Stop</button>

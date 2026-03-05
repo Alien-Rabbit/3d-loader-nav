@@ -6,6 +6,7 @@ let cachedModules = null;
 let glbCache = {};
 
 let sceneRef, cameraRef, rendererRef;
+let backgroundTexture = null;
 
 
 function attachSceneRefs(scene, camera, renderer) {
@@ -125,7 +126,7 @@ window.loadThreeJSWithModel = async function (modelPath, backgroundTex, light, s
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
     directionalLight.position.set(5, 5, 5);
     scene.add(directionalLight);
-    scene.background = new THREE.Color('black');
+    scene.background = backgroundTexture || new THREE.Color('black');
 
     // Camera and renderer setup
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -265,6 +266,8 @@ window.modelWithPath = function (modelPath, backgroundTex, scale, Tarx, Tary, Ta
         texLoader.load(backgroundTex, function (texture) {
             scene.background = texture;  // Set as background
         });
+    } else {
+        scene.background = backgroundTexture || new THREE.Color('black');
     }
 
     const extension = format || model.split('.').pop().toLowerCase();
@@ -575,6 +578,25 @@ function logToConsole(message) {
 
 document.getElementById("clearConsole").onclick = function() {
     document.getElementById("console").innerHTML = "";
+}
+
+document.getElementById("bgUpload").onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const url = URL.createObjectURL(file);
+    if (cachedModules) {
+        const texLoader = new cachedModules.THREE.TextureLoader();
+        backgroundTexture = texLoader.load(url);
+        if (sceneRef) {
+            sceneRef.background = backgroundTexture;
+            logToConsole("Background image set");
+        } else {
+            logToConsole("Background image loaded, will apply when scene is created");
+        }
+    } else {
+        logToConsole("Three.js not loaded yet");
+    }
 }
 
 
