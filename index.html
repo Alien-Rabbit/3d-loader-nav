@@ -96,6 +96,19 @@
       border-radius: 4px;
       font-size: 12px;
       min-width: 120px;
+      transition: background 0.2s ease;
+    }
+
+    .keyframe.current {
+      background: #0a0;
+    }
+
+    h2 {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-size: 1.4em;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #0a0;
     }
 
     #timelineWrapper {
@@ -119,7 +132,7 @@
   <div id="three-container"></div>
 
   <div id="ui">
-    <h2>Beady Eye 3D Model Viewer and Recorder</h2>
+    <h2>Beady Eye 3D Model Viewer and Animation Recorder</h2>
     <div class="row">
 
       <label>Model: <input type="file" id="glbUpload" accept=".glb,.obj,.fbx"></label>

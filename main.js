@@ -353,6 +353,8 @@ function playCameraTimeline(keys) {
     function moveNext() {
         if (index >= keys.length - 1) return;
 
+        highlightKeyframe(index);
+
         const from = new THREE.Vector3(
             keys[index].x,
             keys[index].y,
@@ -379,6 +381,7 @@ function playCameraTimeline(keys) {
                 requestAnimationFrame(animate);
             } else {
                 index++;
+                highlightKeyframe(index);
                 moveNext();
             }
         }
@@ -419,11 +422,21 @@ function renderTimeline() {
     cameraPath.forEach((k, i) => {
         const div = document.createElement("div");
         div.className = "keyframe";
+        div.dataset.index = i;
         div.textContent = `Key ${i + 1} — ${k.time}ms`;
         tl.appendChild(div);
     });
 
+    highlightKeyframe(0);
     updateScrubberRange();
+}
+
+function highlightKeyframe(idx) {
+    const nodes = document.querySelectorAll('.keyframe');
+    nodes.forEach((n, i) => {
+        if (i === idx) n.classList.add('current');
+        else n.classList.remove('current');
+    });
 }
 
 function totalDuration() {
