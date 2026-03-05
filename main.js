@@ -5,6 +5,14 @@ console.log('three js loading script main.js loaded');
 let cachedModules = null;
 let glbCache = {};
 
+let sceneRef, cameraRef, rendererRef;
+
+
+function attachSceneRefs(scene, camera, renderer) {
+    sceneRef = scene;
+    cameraRef = camera;
+    rendererRef = renderer;
+}
 
 const scrubber = document.getElementById("scrubber");
 scrubber.oninput = () => applyCameraAt(scrubber.value / scrubber.max);
@@ -40,6 +48,10 @@ window.loadThree = (function () {
 })();
 
 window.preloadGLB = async function (rootPath) {
+    if (!cachedModules) {
+        console.error("Three.js modules not loaded.");
+        return null;
+    }
     const loader = new cachedModules.GLTFLoader();
 
     try {
@@ -117,6 +129,7 @@ window.loadThreeJSWithModel = async function (modelPath, backgroundTex, light, s
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.getElementById("three-container").appendChild(renderer.domElement);
+    attachSceneRefs(scene, camera, renderer);
 
     // Load the GLB model
     const clock = new THREE.Clock();
@@ -277,8 +290,12 @@ window.modelWithPath = function (modelPath, backgroundTex, scale, Tarx, Tary, Ta
     requestAnimationFrame(animateCamera);
 }
 
-
 function playCameraTimeline(keys) {
+    if (!cachedModules) {
+        console.error("Three.js modules not loaded.");
+        return;
+    }
+    const THREE = cachedModules.THREE;
     let index = 0;
 
     function moveNext() {
@@ -303,8 +320,8 @@ function playCameraTimeline(keys) {
             if (!start) start = time;
             const t = Math.min((time - start) / duration, 1);
 
-            camera.position.lerpVectors(from, to, t);
-            renderer.render(sceneRef, camera);
+            cameraRef.position.lerpVectors(from, to, t);
+            rendererRef.render(sceneRef, cameraRef);
 
             if (t < 1) {
                 requestAnimationFrame(animate);
@@ -362,6 +379,11 @@ function totalDuration() {
 }
 
 function buildSpline() {
+    if (!cachedModules) {
+        console.error("Three.js modules not loaded.");
+        return null;
+    }
+    const THREE = cachedModules.THREE;
     return new THREE.CatmullRomCurve3(
         cameraPath.map(k =>
             new THREE.Vector3(k.position.x, k.position.y, k.position.z)
@@ -375,17 +397,22 @@ scrubber.oninput = () => {
 };
 
 scrubber.addEventListener("input", () => {
-    if (!camera || !rendererRef) return;
+    if (!cameraRef || !rendererRef) return;
 
     const t = scrubber.value / scrubber.max;
     applyCameraAt(t);
 });
 
 function applyCameraAt(t) {
+    if (!cachedModules) {
+        console.error("Three.js modules not loaded.");
+        return;
+    }
+    const THREE = cachedModules.THREE;
     const spline = buildSpline();
     const pos = spline.getPoint(t);
 
-    camera.position.copy(pos);
+    cameraRef.position.copy(pos);
 
     const idx = Math.floor(t * (cameraPath.length - 1));
     const a = cameraPath[idx];
@@ -397,11 +424,15 @@ function applyCameraAt(t) {
         THREE.MathUtils.lerp(a.lookAt.z, b.lookAt.z, t)
     );
 
-    camera.lookAt(look);
-    rendererRef.render(sceneRef, camera);
+    cameraRef.lookAt(look);
+    rendererRef.render(sceneRef, cameraRef);
 }
 
 function playCameraSpline(duration = 5000) {
+    if (!cachedModules) {
+        console.error("Three.js modules not loaded.");
+        return;
+    }
     const spline = buildSpline();
     let start = null;
 
@@ -410,7 +441,7 @@ function playCameraSpline(duration = 5000) {
         const t = Math.min((time - start) / duration, 1);
 
         const pos = spline.getPoint(t);
-        camera.position.copy(pos);
+        cameraRef.position.copy(pos);
 
         applyCameraAt(t);
 
@@ -437,9 +468,9 @@ function updateScrubberRange() {
 let recorder, recordedChunks = [];
 
 function startRecording() {
-    const stream = renderer.domElement.captureStream(60);
+    const stream = rendererRef.domElement.captureStream(60);
     recorder = new MediaRecorder(stream, {
-        mimeType: "video/webm"
+        mimeType: "video/mp4"
     });
 
     recorder.ondataavailable = e => recordedChunks.push(e.data);
@@ -452,16 +483,17 @@ function stopRecording() {
 }
 
 function exportVideo() {
-    const blob = new Blob(recordedChunks, { type: "video/webm" });
+    const blob = new Blob(recordedChunks, { type: "video/mp4" });
     const url = URL.createObjectURL(blob);
 
     const a = document.createElement("a");
     a.href = url;
-    a.download = "camera-animation.webm";
+    a.download = "camera-animation.mp4";
     a.click();
 
     recordedChunks = [];
 }
+
 
 document.getElementById("glbUpload").onchange = async (e) => {
     const file = e.target.files[0];
